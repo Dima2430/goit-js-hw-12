@@ -44,10 +44,7 @@ form.addEventListener('submit', e => {
           lightbox.refresh();
           loader.style.display = 'none';
           loadMoreButton.style.display = 'block';
-          window.scrollBy({
-      top: document.querySelector('.gallery-image').getBoundingClientRect().height * 2,
-      behavior: 'smooth'
-    });
+          
         }else {
             iziToast.info({
                 title: 'Info',
@@ -78,6 +75,10 @@ loadMoreButton.addEventListener('click', async () => {
       position: 'topRight',
     });
   }
+  window.scrollTo({
+    top: document.body.scrollHeight,
+    behavior: 'smooth',
+  });
 });
 async function getImage(q,page = 1) {
     const PARAMS = {
