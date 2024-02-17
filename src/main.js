@@ -107,7 +107,6 @@ async function getImage(q,page = 1) {
         loader.style.display = 'none';
     }
 }
-
 function createGallery({
   largeImageURL,
   tags,
