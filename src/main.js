@@ -75,7 +75,6 @@ loadMoreButton.addEventListener('click', async () => {
       position: 'topRight',
     });
   }
- 
   window.scrollBy({
       top: document.querySelector('.gallery-image').getBoundingClientRect().height * 2,
       behavior: 'smooth'
