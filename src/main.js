@@ -6,12 +6,14 @@ import "simplelightbox/dist/simple-lightbox.min.css";
 import iziToast from "izitoast";
 // Додатковий імпорт стилів
 import "izitoast/dist/css/iziToast.min.css";
+import axios from 'axios';
 
-
-
+let currentQuery = '';
+let currentPage = 1;
 const form = document.querySelector('.search-form');
 const gallery = document.querySelector('.gallery');
 const loader = document.querySelector('.loader');
+const loadMoreButton = document.querySelector('.load-more')
 loader.style.display = 'none';
 const BASE_URL = 'https://pixabay.com/api/';
 let lightbox;
@@ -28,10 +30,12 @@ form.addEventListener('submit', e => {
        loader.style.display = 'none';
     return;
   }
- 
+  loadMoreButton.style.display = 'none';
+  currentQuery = queryInput;
+  currentPage = 1;
     gallery.innerHTML = '';
   
-    getImage(queryInput).then(({ hits }) => {
+    getImage(currentQuery, currentPage).then(({ hits }) => {
         if (hits.length > 0) {
             const galleryHTML = hits.map(createGallery).join('');
             gallery.innerHTML = galleryHTML;
@@ -39,45 +43,69 @@ form.addEventListener('submit', e => {
             lightbox = new SimpleLightbox(`.gallery-link`);
           lightbox.refresh();
           loader.style.display = 'none';
-           
+          loadMoreButton.style.display = 'block';
+          window.scrollBy({
+      top: document.querySelector('.gallery-image').getBoundingClientRect().height * 2,
+      behavior: 'smooth'
+    });
         }else {
             iziToast.info({
                 title: 'Info',
                 message: 'Unfortunately, no images were found for your search. Please try again!',
                 position: 'topRight',
             });
+           loadMoreButton.style.display = 'none';
         }
     })
   form.reset();
   
 })
 
-function getImage(q) {
+
+loadMoreButton.addEventListener('click', async () => {
+  loader.style.display = 'block';
+  currentPage += 1;
+  const { hits } = await getImage(currentQuery, currentPage);
+  const galleryHTML = hits.map(createGallery).join('');
+  gallery.insertAdjacentHTML('beforeend', galleryHTML);
+  lightbox.refresh();
+  loader.style.display = 'none';
+  if (hits.length === 0) {
+    loadMoreButton.style.display = 'none';
+    iziToast.info({
+      title: 'Info',
+      message: "We're sorry, but you've reached the end of search results.",
+      position: 'topRight',
+    });
+  }
+});
+async function getImage(q,page = 1) {
     const PARAMS = {
         key: '42392659-652aaf55959599f1a779f61b5',
         q,
         image_type: 'photo',
         orientation: 'horizontal',
-        safeSearch: true,
+      safeSearch: true,
+         per_page: 15,
+        page,
     }
     const url = BASE_URL + '?' + new URLSearchParams(PARAMS).toString();
-    return fetch(url).then(res => {
-            if (!res.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return res.json();
-        })
-        .catch(error => {
-            iziToast.error({
-                title: 'Error',
-                message: 'There seems to be a problem with your internet connection. Please check and try again.',
-                position: 'topRight',
-            });
-            throw error;
-        })
-      .finally(() => {
-     loader.style.display = 'none';
-  })
+    try {
+        const res = await axios.get(url);
+        if (res.status !== 200) {
+            throw new Error('Network response was not ok');
+        }
+        return res.data;
+    } catch (error) {
+        iziToast.error({
+            title: 'Error',
+            message: 'There seems to be a problem with your internet connection. Please check and try again.',
+            position: 'topRight',
+        });
+        throw error;
+    } finally {
+        loader.style.display = 'none';
+    }
 }
 
 function createGallery({
