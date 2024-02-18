@@ -35,8 +35,7 @@ form.addEventListener('submit', e => {
   currentPage = 1;
     gallery.innerHTML = '';
   
-  getImage(currentQuery, currentPage).then(({ hits, totalHits }) => {
-   
+  getImage(currentQuery, currentPage).then(({ hits }) => {  
         if (hits.length > 0) {
             const galleryHTML = hits.map(createGallery).join('');
             gallery.innerHTML = galleryHTML;
@@ -44,8 +43,6 @@ form.addEventListener('submit', e => {
             lightbox = new SimpleLightbox(`.gallery-link`);
           lightbox.refresh();
           loader.style.display = 'none';
-          loadMoreButton.style.display = 'block';
-          
         }else {
             iziToast.info({
                 title: 'Info',
@@ -94,7 +91,7 @@ async function getImage(q,page = 1) {
     const url = BASE_URL + '?' + new URLSearchParams(PARAMS).toString();
     try {
       const res = await axios.get(url);
-      if (res.data.totalHits <= PARAMS.per_page * PARAMS.page) loadMoreButton.style.display = 'none';
+      if (res.data.totalHits <= PARAMS.per_page * PARAMS.page) {loadMoreButton.style.display = 'none';}else{loadMoreButton.style.display = 'block';}
         if (res.status !== 200) {
             throw new Error('Network response was not ok');
         }
