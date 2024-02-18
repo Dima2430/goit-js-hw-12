@@ -91,7 +91,15 @@ async function getImage(q,page = 1) {
     const url = BASE_URL + '?' + new URLSearchParams(PARAMS).toString();
     try {
       const res = await axios.get(url);
-      if (res.data.totalHits <= PARAMS.per_page * PARAMS.page) {loadMoreButton.style.display = 'none';}else{loadMoreButton.style.display = 'block';}
+      if (res.data.totalHits <= PARAMS.per_page * PARAMS.page) {
+        loadMoreButton.style.display = 'none';
+          iziToast.show({
+                title: '',
+                message: "We're sorry, but you've reached the end of search results.",
+                color: 'red',
+                position: 'topRight'
+            });
+      } else { loadMoreButton.style.display = 'block'; }
         if (res.status !== 200) {
             throw new Error('Network response was not ok');
         }
