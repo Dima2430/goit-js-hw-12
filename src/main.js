@@ -1,121 +1,54 @@
-// Описаний у документації
-import SimpleLightbox from "simplelightbox";
-// Додатковий імпорт стилів
-import "simplelightbox/dist/simple-lightbox.min.css";
-// Описаний у документації
-import iziToast from "izitoast";
-// Додатковий імпорт стилів
-import "izitoast/dist/css/iziToast.min.css";
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
+import iziToast from 'izitoast';
+import 'izitoast/dist/css/iziToast.min.css';
 import axios from 'axios';
 
-let currentQuery = '';
-let currentPage = 1;
+let page = 1;
+let totalPages = 0;
+let query = '';
 const form = document.querySelector('.search-form');
 const gallery = document.querySelector('.gallery');
 const loader = document.querySelector('.loader');
-const loadMoreButton = document.querySelector('.load-more')
-loader.style.display = 'none';
-const BASE_URL = 'https://pixabay.com/api/';
+const loadMoreButton = document.querySelector('.load-more');
 let lightbox;
-form.addEventListener('submit', e => {
+
+form.addEventListener('submit', async e => {
   e.preventDefault();
-  loader.style.display = 'block';
-    const queryInput = e.target.elements.query.value.trim();
-    if (queryInput.length < 3) {
-         iziToast.warning({
-      title: 'Warning',
-      message: 'Please enter a search query with at least 3 characters.',
+  query = e.target.elements.query.value.trim();
+
+  if (!query) {
+    iziToast.error({
+      title: 'Error',
+      message: 'Please enter a search term.',
       position: 'topRight',
-         });
-       loader.style.display = 'none';
+    });
     return;
   }
-  loadMoreButton.style.display = 'none';
-  currentQuery = queryInput;
-  currentPage = 1;
-    gallery.innerHTML = '';
-  
-  getImage(currentQuery, currentPage).then(({ hits }) => {  
-        if (hits.length > 0) {
-            const galleryHTML = hits.map(createGallery).join('');
-            gallery.innerHTML = galleryHTML;
-            
-            lightbox = new SimpleLightbox(`.gallery-link`);
-          lightbox.refresh();
-          loader.style.display = 'none';
-        }else {
-            iziToast.info({
-                title: 'Info',
-                message: 'Unfortunately, no images were found for your search. Please try again!',
-                position: 'topRight',
-            });
-           loadMoreButton.style.display = 'none';
-        }
-    })
-  form.reset();
-  
-})
 
-
-loadMoreButton.addEventListener('click', async () => {
   loader.style.display = 'block';
-  currentPage += 1;
-  const { hits } = await getImage(currentQuery, currentPage);
-  const galleryHTML = hits.map(createGallery).join('');
-  gallery.insertAdjacentHTML('beforeend', galleryHTML);
-  lightbox.refresh();
-  loader.style.display = 'none';
-  if (hits.length === 0) {
-    loadMoreButton.style.display = 'none';
-    iziToast.info({
-      title: 'Info',
-      message: "We're sorry, but you've reached the end of search results.",
-      position: 'topRight',
-    });
-  }
-  window.scrollBy({
-      top: document.querySelector('.gallery-image').getBoundingClientRect().height * 2,
-      behavior: 'smooth'
-    });
+  gallery.innerHTML = '';
+  fetchAndRender();
+  form.reset();
 });
-async function getImage(q,page = 1) {
-    const PARAMS = {
-        key: '42392659-652aaf55959599f1a779f61b5',
-        q,
-        image_type: 'photo',
-        orientation: 'horizontal',
-      safeSearch: true,
-         per_page: 15,
-        page,
-    }
-    const url = BASE_URL + '?' + new URLSearchParams(PARAMS).toString();
-    try {
-      const res = await axios.get(url);
-      if (res.data.totalHits <= PARAMS.per_page * PARAMS.page) {
-        loadMoreButton.style.display = 'none';
-          iziToast.show({
-                title: '',
-                message: "We're sorry, but you've reached the end of search results.",
-                color: 'red',
-                position: 'topRight'
-            });
-      } else { loadMoreButton.style.display = 'block'; }
-        if (res.status !== 200) {
-            throw new Error('Network response was not ok');
-        }
-        return res.data;
-    } catch (error) {
-        iziToast.error({
-            title: 'Error',
-            message: 'There seems to be a problem with your internet connection. Please check and try again.',
-            position: 'topRight',
-        });
-        throw error;
-    } finally {
-        loader.style.display = 'none';
-    }
+loadMoreButton.addEventListener('click', async e => {
+  fetchAndRender();
+});
+function fetchFotos(q) {
+  const PARAMS = {
+    key: '42392659-652aaf55959599f1a779f61b5',
+    q,
+    image_type: 'photo',
+    orientation: 'horizontal',
+    safeSearch: true,
+    per_page: 20,
+    page,
+  };
+  return axios.get(`https://pixabay.com/api/`, {
+    params: PARAMS,
+  });
 }
-function createGallery({
+function render({
   largeImageURL,
   tags,
   webformatURL,
@@ -137,4 +70,56 @@ function createGallery({
       </figure>
     </a>
   `;
+}
+
+async function fetchAndRender() {
+  try {
+    const response = await fetchFotos(query);
+    const hits = response.data.hits;
+    const totalHits = response.data.totalHits;
+
+    if (page === 1) {
+      totalPages = Math.ceil(totalHits / 20);
+    }
+
+    if (hits.length === 0) {
+      iziToast.info({
+        title: 'Info',
+        message: 'No results found.',
+        position: 'topRight',
+      });
+      loadMoreButton.style.display = 'none';
+      return;
+    }
+
+    gallery.insertAdjacentHTML('beforeend', hits.map(render).join(''));
+
+    if (!lightbox) {
+      lightbox = new SimpleLightbox('.gallery a');
+    } else {
+      lightbox.refresh();
+    }
+
+    if (page >= totalPages) {
+      loadMoreButton.style.display = 'none';
+      iziToast.info({
+        title: 'Info',
+        message: 'No more results to show.',
+        position: 'topRight',
+      });
+    } else {
+      loadMoreButton.style.display = 'block';
+    }
+
+    page++;
+  } catch (error) {
+    console.error(error);
+    iziToast.error({
+      title: 'Error',
+      message: 'Something went wrong. Try again later.',
+      position: 'topRight',
+    });
+  } finally {
+    loader.style.display = 'none';
+  }
 }
